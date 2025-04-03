@@ -9,14 +9,12 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
         }
         .container {
             background-color: white;
             padding: 20px;
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
         }
         .post-title {
             font-size: 24px;
@@ -40,9 +38,6 @@
             padding: 10px;
             border-bottom: 1px solid #eee;
         }
-        .comment:last-child {
-            border-bottom: none;
-        }
         .comment-meta {
             font-size: 14px;
             color: #666;
@@ -51,18 +46,15 @@
         .comment-content {
             white-space: pre-line;
         }
-        .comment-form {
-            margin-top: 20px;
-        }
         .btn {
             padding: 8px 15px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             text-decoration: none;
-            color: white;
             display: inline-block;
             margin-right: 10px;
+            color: white;
         }
         .btn-primary {
             background-color: #007bff;
@@ -70,50 +62,36 @@
         .btn-secondary {
             background-color: #6c757d;
         }
-        .btn:hover {
-            opacity: 0.9;
+        .comment-form {
+            margin-top: 20px;
         }
-        textarea {
+        .comment-form textarea {
             width: 100%;
+            height: 100px;
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-            height: 100px;
             resize: vertical;
-        }
-        .alert {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
+            margin-bottom: 10px;
         }
         .comment-actions {
             margin-top: 5px;
         }
         .comment-actions button {
-            padding: 3px 8px;
+            padding: 4px 8px;
             font-size: 12px;
             margin-right: 5px;
             cursor: pointer;
             border: none;
             border-radius: 3px;
-            background-color: #f0f0f0;
         }
         .edit-btn {
-            color: #0056b3;
+            background-color: #28a745;
+            color: white;
         }
         .delete-btn {
-            color: #dc3545;
+            background-color: #dc3545;
+            color: white;
         }
         .comment-edit-form {
             margin-top: 10px;
@@ -121,27 +99,27 @@
         }
         .comment-edit-form textarea {
             width: 100%;
-            padding: 5px;
+            padding: 8px;
             margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
         }
-        .comment-edit-form button {
-            padding: 5px 10px;
-            margin-right: 5px;
+        .btn-group {
+            margin-top: 5px;
+        }
+        .save-btn {
+            background-color: #007bff;
+            color: white;
+        }
+        .cancel-btn {
+            background-color: #6c757d;
+            color: white;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <h1 class="post-title">{{ post.title }}</h1>
         <div class="post-meta">
             작성자: {{ post.author_name }} | 
@@ -151,12 +129,12 @@
             {{ post.content }}
         </div>
         
-        <a href="{{ url_for('main') }}" class="btn btn-secondary">목록으로</a>
+        <a href="{{ url_for('post.list_posts') }}" class="btn btn-secondary">목록으로</a>
         
         <div class="comments">
             <h3>댓글</h3>
             
-            <form class="comment-form" method="POST" action="{{ url_for('add_comment', post_id=post.id) }}">
+            <form class="comment-form" method="POST" action="{{ url_for('comment.add_comment', post_id=post.id) }}">
                 <textarea name="content" placeholder="댓글을 입력하세요" required></textarea>
                 <button type="submit" class="btn btn-primary">댓글 작성</button>
             </form>
@@ -168,22 +146,24 @@
                             {{ comment.author_name }} | 
                             {{ comment.formatted_date }}
                         </div>
-                        <div class="comment-content">
+                        <div class="comment-content" id="content-{{ comment.id }}">
                             {{ comment.content }}
                         </div>
-                        {% if session['user_db_id'] == comment.author_id %}
+                        {% if session.user_db_id == comment.author_id %}
                             <div class="comment-actions">
                                 <button class="edit-btn" onclick="toggleEditForm({{ comment.id }})">수정</button>
-                                <form style="display: inline;" method="POST" action="{{ url_for('delete_comment', comment_id=comment.id) }}" 
+                                <form style="display: inline;" method="POST" action="{{ url_for('comment.delete_comment', comment_id=comment.id) }}" 
                                       onsubmit="return confirm('정말로 이 댓글을 삭제하시겠습니까?');">
                                     <button type="submit" class="delete-btn">삭제</button>
                                 </form>
                             </div>
                             <div class="comment-edit-form" id="edit-form-{{ comment.id }}">
-                                <form method="POST" action="{{ url_for('edit_comment', comment_id=comment.id) }}">
+                                <form method="POST" action="{{ url_for('comment.edit_comment', comment_id=comment.id) }}">
                                     <textarea name="content" required>{{ comment.content }}</textarea>
-                                    <button type="submit" class="btn btn-primary">저장</button>
-                                    <button type="button" class="btn btn-secondary" onclick="toggleEditForm({{ comment.id }})">취소</button>
+                                    <div class="btn-group">
+                                        <button type="submit" class="btn save-btn">저장</button>
+                                        <button type="button" class="btn cancel-btn" onclick="toggleEditForm({{ comment.id }})">취소</button>
+                                    </div>
                                 </form>
                             </div>
                         {% endif %}
@@ -197,15 +177,15 @@
 
     <script>
         function toggleEditForm(commentId) {
+            const contentDiv = document.getElementById(`content-${commentId}`);
             const editForm = document.getElementById(`edit-form-${commentId}`);
-            const commentContent = editForm.previousElementSibling.previousElementSibling;
             
             if (editForm.style.display === 'none' || !editForm.style.display) {
+                contentDiv.style.display = 'none';
                 editForm.style.display = 'block';
-                commentContent.style.display = 'none';
             } else {
+                contentDiv.style.display = 'block';
                 editForm.style.display = 'none';
-                commentContent.style.display = 'block';
             }
         }
     </script>

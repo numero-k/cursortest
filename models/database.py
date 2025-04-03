@@ -13,4 +13,9 @@ DB_CONFIG = {
 }
 
 def get_db_connection():
-    return mysql.connector.connect(**DB_CONFIG) 
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        return conn
+    except Exception as e:
+        print(f"데이터베이스 연결 오류: {e}")
+        raise 
