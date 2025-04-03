@@ -256,4 +256,139 @@ python kafka_test.py
 
 - 대부분의 API는 로그인이 필요합니다.
 - 로그인하지 않은 상태에서 접근 시 로그인 페이지로 리다이렉트됩니다.
-- 세션을 통해 사용자 인증을 관리합니다. 
+- 세션을 통해 사용자 인증을 관리합니다.
+
+## 보안 설정
+
+### 프로덕션 환경 설정
+- 디버그 모드 비활성화
+- 프로덕션 환경으로 설정
+- 자동 리로더 비활성화
+
+### 세션 보안
+```python
+app.config.update(
+    SESSION_COOKIE_SECURE=True,     # HTTPS에서만 쿠키 전송
+    SESSION_COOKIE_HTTPONLY=True,   # JavaScript에서 세션 쿠키 접근 방지
+    SESSION_COOKIE_SAMESITE='Lax', # CSRF 공격 방지
+    PERMANENT_SESSION_LIFETIME=1800 # 세션 만료 시간 30분
+)
+```
+
+### 에러 처리
+- 커스텀 404 페이지: 페이지를 찾을 수 없을 때
+- 커스텀 500 페이지: 서버 내부 오류 발생 시
+- 사용자 친화적인 에러 메시지 제공
+
+### 환경 변수 설정
+```env
+# 기본 설정
+PORT=5000
+ENV=production
+SECRET_KEY=your_secret_key
+
+# 데이터베이스 설정
+DB_HOST=your_db_host
+DB_PORT=3306
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=your_db_name
+
+# Kafka 설정
+KAFKA_BOOTSTRAP_SERVERS=your_kafka_servers
+KAFKA_NOTIFICATION_TOPIC=notifications
+KAFKA_ACTIVITY_LOG_TOPIC=user_activities
+KAFKA_EMAIL_NOTIFICATION_TOPIC=email_notifications
+```
+
+## 보안 체크리스트
+
+### 1. 인증 및 권한
+- [x] 안전한 비밀번호 해싱 (werkzeug.security)
+- [x] 세션 기반 인증
+- [x] 세션 타임아웃 설정
+- [x] 권한 기반 접근 제어
+
+### 2. 데이터 보안
+- [x] SQL 인젝션 방지 (파라미터화된 쿼리 사용)
+- [x] XSS 방지 (템플릿 이스케이핑)
+- [x] CSRF 보호 (SameSite 쿠키)
+- [x] 민감한 데이터 암호화
+
+### 3. 통신 보안
+- [x] HTTPS 강제 (Secure 쿠키)
+- [x] WebSocket 보안
+- [x] 적절한 CORS 설정
+
+### 4. 에러 처리
+- [x] 사용자 친화적인 에러 페이지
+- [x] 디버그 정보 노출 방지
+- [x] 로깅 시스템
+
+## 프로덕션 배포 체크리스트
+
+### 1. 환경 설정
+- [ ] 모든 디버그 모드 비활성화
+- [ ] 환경 변수 적절히 설정
+- [ ] 로그 레벨 설정
+
+### 2. 성능
+- [ ] 정적 파일 캐싱
+- [ ] 데이터베이스 커넥션 풀링
+- [ ] 적절한 워커 수 설정
+
+### 3. 모니터링
+- [ ] 에러 로깅 설정
+- [ ] 성능 모니터링
+- [ ] 보안 모니터링
+
+### 4. 백업
+- [ ] 데이터베이스 백업 설정
+- [ ] 로그 백업 설정
+- [ ] 복구 계획 수립
+
+## 에러 페이지
+
+### 404 Not Found
+- 사용자 친화적인 404 에러 페이지
+- 메인 페이지로의 리다이렉션 링크 제공
+- 명확한 에러 메시지 표시
+
+### 500 Internal Server Error
+- 사용자 친화적인 500 에러 페이지
+- 적절한 사용자 안내 메시지
+- 관리자 알림 시스템 (선택적)
+
+## 로깅 시스템
+
+### 로그 레벨
+- ERROR: 심각한 오류
+- WARNING: 경고 메시지
+- INFO: 일반 정보
+- DEBUG: 디버깅 정보 (프로덕션에서는 비활성화)
+
+### 로그 정보
+- 타임스탬프
+- 로그 레벨
+- 이벤트 설명
+- 스택 트레이스 (필요한 경우)
+- 사용자 정보 (필요한 경우)
+
+## 모니터링
+
+### 시스템 모니터링
+- 서버 상태
+- 메모리 사용량
+- CPU 사용량
+- 디스크 공간
+
+### 애플리케이션 모니터링
+- 요청 응답 시간
+- 에러 발생률
+- 동시 접속자 수
+- API 사용량
+
+### 보안 모니터링
+- 비정상 접근 시도
+- 인증 실패 로그
+- 리소스 사용량 급증 
