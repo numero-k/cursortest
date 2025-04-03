@@ -12,24 +12,23 @@ def init_kafka_producer():
     global producer
     try:
         producer = KafkaProducer(
-            bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS'),
+            bootstrap_servers=[os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092')],
             value_serializer=lambda v: json.dumps(v).encode('utf-8')
         )
-        print("Kafka 연결 성공")
         return True
     except Exception as e:
         print(f"Kafka 연결 실패: {e}")
         return False
 
-def send_notification(topic, message):
+def send_notification(notification_data):
+    global producer
     if producer is None:
-        print("Kafka 프로듀서가 초기화되지 않았습니다.")
-        return False
+        if not init_kafka_producer():
+            print("Kafka 연결 실패로 알림을 전송할 수 없습니다.")
+            return
     
     try:
-        producer.send(topic, message)
+        producer.send('notifications', notification_data)
         producer.flush()
-        return True
     except Exception as e:
-        print(f"Kafka 메시지 전송 실패: {e}")
-        return False 
+        print(f"알림 전송 실패: {e}") 

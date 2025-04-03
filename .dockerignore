@@ -1,5 +1,6 @@
-# 환경 변수 파일
-.env
+# Git
+.git
+.gitignore
 
 # Python
 __pycache__/
@@ -44,15 +45,6 @@ instance/
 uploads/
 
 # Docker
-.docker/
-
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
-.mypy_cache/
-
-# Distribution
-dist/
-build/
-*.egg-info/ 
+Dockerfile
+docker-compose.yml
+.dockerignore 

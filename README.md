@@ -121,31 +121,93 @@ python kafka_test.py
 - API 구조 모듈화
 - Kafka 기반 실시간 알림 시스템 추가
 - 프로젝트 구조 개선
+- Docker 컨테이너화 추가
 
 ## 프로젝트 구조
+```
+cursor test/
+├── api/              # API 모듈
+├── models/           # 데이터베이스 모델
+├── utils/            # 유틸리티 함수
+├── static/           # 정적 파일
+├── templates/        # HTML 템플릿
+├── app.py           # 메인 애플리케이션
+├── config.py        # 설정 파일
+├── Dockerfile       # Docker 이미지 설정
+├── docker-compose.yml # Docker Compose 설정
+└── README.md
+```
+
+## Docker로 실행하기
+
+### 사전 요구사항
+- Docker
+- Docker Compose
+
+### 환경 설정
+1. `.env.example` 파일을 `.env`로 복사하고 필요한 환경 변수를 설정합니다:
+```bash
+cp .env.example .env
+```
+
+2. `.env` 파일에서 다음 설정을 확인/수정합니다:
+```
+SECRET_KEY=your-secret-key-here
+```
+
+### 실행 방법
+1. Docker 이미지 빌드 및 컨테이너 실행:
+```bash
+docker-compose up --build
+```
+
+2. 백그라운드에서 실행:
+```bash
+docker-compose up -d
+```
+
+3. 컨테이너 중지:
+```bash
+docker-compose down
+```
+
+4. 로그 확인:
+```bash
+docker-compose logs -f
+```
+
+### 컨테이너 정보
+- 웹 애플리케이션: http://localhost:5000
+- Kafka: localhost:9092
+- Zookeeper: localhost:2181
+
+### 볼륨
+- `instance/`: SQLite 데이터베이스 파일
+- `logs/`: 애플리케이션 로그 파일
+
+### 네트워크
+- `app-network`: 모든 서비스가 연결된 브릿지 네트워크
 
 ## API 명세서
 
-### 인증 API
+### 인증 API (auth)
 
 #### 로그인
-- **URL:** `/login`
-- **Method:** `POST`
-- **Request Body:**
+- **엔드포인트**: `/auth/login`
+- **메소드**: `POST`
+- **요청 데이터**:
   ```json
   {
     "user_id": "string",
     "password": "string"
   }
   ```
-- **Response:**
-  - 성공: 메인 페이지로 리다이렉트
-  - 실패: 로그인 페이지로 리다이렉트
+- **응답**: 로그인 성공 시 메인 페이지로 리다이렉트
 
 #### 회원가입
-- **URL:** `/register`
-- **Method:** `POST`
-- **Request Body:**
+- **엔드포인트**: `/auth/register`
+- **메소드**: `POST`
+- **요청 데이터**:
   ```json
   {
     "name": "string",
@@ -155,81 +217,77 @@ python kafka_test.py
     "birthdate": "YYYY-MM-DD"
   }
   ```
-- **Response:**
-  - 성공: 로그인 페이지로 리다이렉트
-  - 실패: 회원가입 페이지로 리다이렉트
+- **응답**: 회원가입 성공 시 로그인 페이지로 리다이렉트
 
 #### 로그아웃
-- **URL:** `/logout`
-- **Method:** `GET`
-- **Response:** 로그인 페이지로 리다이렉트
+- **엔드포인트**: `/auth/logout`
+- **메소드**: `GET`
+- **응답**: 로그인 페이지로 리다이렉트
 
-### 게시글 API
+### 게시글 API (post)
 
 #### 게시글 목록 조회
-- **URL:** `/posts`
-- **Method:** `GET`
-- **Query Parameters:**
-  - `page` (optional): 페이지 번호
-- **Response:** 게시글 목록 페이지
+- **엔드포인트**: `/post/list`
+- **메소드**: `GET`
+- **응답**: 게시글 목록 페이지
 
 #### 게시글 작성
-- **URL:** `/post/new`
-- **Method:** `POST`
-- **Request Body:**
+- **엔드포인트**: `/post/create`
+- **메소드**: `POST`
+- **요청 데이터**:
   ```json
   {
     "title": "string",
     "content": "string"
   }
   ```
-- **Response:**
-  - 성공: 게시글 목록으로 리다이렉트
-  - 실패: 게시글 작성 페이지로 리다이렉트
+- **응답**: 게시글 목록으로 리다이렉트
 
 #### 게시글 조회
-- **URL:** `/post/<post_id>`
-- **Method:** `GET`
-- **Response:** 게시글 상세 페이지
+- **엔드포인트**: `/post/<int:post_id>`
+- **메소드**: `GET`
+- **응답**: 게시글 상세 페이지
 
-### 댓글 API
+### 댓글 API (comment)
 
 #### 댓글 작성
-- **URL:** `/post/<post_id>/comment`
-- **Method:** `POST`
-- **Request Body:**
+- **엔드포인트**: `/comment/post/<int:post_id>`
+- **메소드**: `POST`
+- **요청 데이터**:
   ```json
   {
     "content": "string"
   }
   ```
-- **Response:** 게시글 상세 페이지로 리다이렉트
+- **응답**: 게시글 상세 페이지로 리다이렉트
 
 #### 댓글 수정
-- **URL:** `/comment/<comment_id>/edit`
-- **Method:** `POST`
-- **Request Body:**
+- **엔드포인트**: `/comment/<int:comment_id>/edit`
+- **메소드**: `POST`
+- **요청 데이터**:
   ```json
   {
     "content": "string"
   }
   ```
-- **Response:** 게시글 상세 페이지로 리다이렉트
+- **응답**: 게시글 상세 페이지로 리다이렉트
 
 #### 댓글 삭제
-- **URL:** `/comment/<comment_id>/delete`
-- **Method:** `POST`
-- **Response:** 게시글 상세 페이지로 리다이렉트
+- **엔드포인트**: `/comment/<int:comment_id>/delete`
+- **메소드**: `POST`
+- **응답**: 게시글 상세 페이지로 리다이렉트
 
-### 실시간 알림 API (WebSocket)
+### 알림 API (notification)
 
-#### 알림 구독
-- **Event:** `connect`
-- **Description:** 클라이언트가 WebSocket 연결을 시작할 때 호출
+#### WebSocket 이벤트
 
-#### 알림 수신
-- **Event:** `notification`
-- **Data Format:**
+##### 연결
+- **이벤트**: `connect`
+- **설명**: 클라이언트 WebSocket 연결 시 호출
+
+##### 알림 수신
+- **이벤트**: `notification`
+- **데이터 형식**:
   ```json
   {
     "type": "string",
@@ -241,153 +299,86 @@ python kafka_test.py
   }
   ```
 
-## 응답 코드
+## 인증 및 권한
 
-- `200`: 성공
-- `301`, `302`: 리다이렉션
-- `400`: 잘못된 요청
-- `401`: 인증 실패
-- `403`: 권한 없음
-- `404`: 리소스 없음
-- `500`: 서버 오류
+### 로그인 필요
+- 게시글 작성/수정/삭제
+- 댓글 작성/수정/삭제
+- 알림 수신
 
-## 인증
+### 작성자 권한
+- 댓글 수정/삭제는 작성자만 가능
 
-- 대부분의 API는 로그인이 필요합니다.
-- 로그인하지 않은 상태에서 접근 시 로그인 페이지로 리다이렉트됩니다.
-- 세션을 통해 사용자 인증을 관리합니다.
+## 실시간 알림 시스템
+
+### Kafka 토픽
+- `notifications`: 새 댓글 알림
+
+### 알림 종류
+- 새 댓글 알림
+  - 게시글 작성자에게 전송
+  - 댓글 작성자 정보 포함
+  - 게시글 제목 포함
+
+## 설치 및 실행
+
+### 요구사항
+- Python 3.x
+- MySQL
+- Apache Kafka
+
+### 설치
+```bash
+# 가상환경 생성 및 활성화
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# 또는
+venv\Scripts\activate  # Windows
+
+# 패키지 설치
+pip install -r requirements.txt
+```
+
+### 환경 설정
+1. `.env.example`을 `.env`로 복사
+2. 데이터베이스 및 Kafka 설정 입력
+
+### 실행
+```bash
+# 데이터베이스 초기화
+python init_db.py
+
+# 애플리케이션 실행
+python app.py
+```
+
+## 테스트
+
+### 알림 시스템 테스트
+```bash
+# 테스트 스크립트 실행
+python test_notification.py
+```
 
 ## 보안 설정
-
-### 프로덕션 환경 설정
 - 디버그 모드 비활성화
-- 프로덕션 환경으로 설정
-- 자동 리로더 비활성화
-
-### 세션 보안
-```python
-app.config.update(
-    SESSION_COOKIE_SECURE=True,     # HTTPS에서만 쿠키 전송
-    SESSION_COOKIE_HTTPONLY=True,   # JavaScript에서 세션 쿠키 접근 방지
-    SESSION_COOKIE_SAMESITE='Lax', # CSRF 공격 방지
-    PERMANENT_SESSION_LIFETIME=1800 # 세션 만료 시간 30분
-)
-```
-
-### 에러 처리
-- 커스텀 404 페이지: 페이지를 찾을 수 없을 때
-- 커스텀 500 페이지: 서버 내부 오류 발생 시
-- 사용자 친화적인 에러 메시지 제공
-
-### 환경 변수 설정
-```env
-# 기본 설정
-PORT=5000
-ENV=production
-SECRET_KEY=your_secret_key
-
-# 데이터베이스 설정
-DB_HOST=your_db_host
-DB_PORT=3306
-DB_USER=your_db_user
-DB_PASSWORD=your_db_password
-DB_NAME=your_db_name
-
-# Kafka 설정
-KAFKA_BOOTSTRAP_SERVERS=your_kafka_servers
-KAFKA_NOTIFICATION_TOPIC=notifications
-KAFKA_ACTIVITY_LOG_TOPIC=user_activities
-KAFKA_EMAIL_NOTIFICATION_TOPIC=email_notifications
-```
-
-## 보안 체크리스트
-
-### 1. 인증 및 권한
-- [x] 안전한 비밀번호 해싱 (werkzeug.security)
-- [x] 세션 기반 인증
-- [x] 세션 타임아웃 설정
-- [x] 권한 기반 접근 제어
-
-### 2. 데이터 보안
-- [x] SQL 인젝션 방지 (파라미터화된 쿼리 사용)
-- [x] XSS 방지 (템플릿 이스케이핑)
-- [x] CSRF 보호 (SameSite 쿠키)
-- [x] 민감한 데이터 암호화
-
-### 3. 통신 보안
-- [x] HTTPS 강제 (Secure 쿠키)
-- [x] WebSocket 보안
-- [x] 적절한 CORS 설정
-
-### 4. 에러 처리
-- [x] 사용자 친화적인 에러 페이지
-- [x] 디버그 정보 노출 방지
-- [x] 로깅 시스템
-
-## 프로덕션 배포 체크리스트
-
-### 1. 환경 설정
-- [ ] 모든 디버그 모드 비활성화
-- [ ] 환경 변수 적절히 설정
-- [ ] 로그 레벨 설정
-
-### 2. 성능
-- [ ] 정적 파일 캐싱
-- [ ] 데이터베이스 커넥션 풀링
-- [ ] 적절한 워커 수 설정
-
-### 3. 모니터링
-- [ ] 에러 로깅 설정
-- [ ] 성능 모니터링
-- [ ] 보안 모니터링
-
-### 4. 백업
-- [ ] 데이터베이스 백업 설정
-- [ ] 로그 백업 설정
-- [ ] 복구 계획 수립
-
-## 에러 페이지
-
-### 404 Not Found
-- 사용자 친화적인 404 에러 페이지
-- 메인 페이지로의 리다이렉션 링크 제공
-- 명확한 에러 메시지 표시
-
-### 500 Internal Server Error
-- 사용자 친화적인 500 에러 페이지
-- 적절한 사용자 안내 메시지
-- 관리자 알림 시스템 (선택적)
-
-## 로깅 시스템
-
-### 로그 레벨
-- ERROR: 심각한 오류
-- WARNING: 경고 메시지
-- INFO: 일반 정보
-- DEBUG: 디버깅 정보 (프로덕션에서는 비활성화)
-
-### 로그 정보
-- 타임스탬프
-- 로그 레벨
-- 이벤트 설명
-- 스택 트레이스 (필요한 경우)
-- 사용자 정보 (필요한 경우)
+- HTTPS 강제
+- 세션 보안 설정
+- CSRF 보호
 
 ## 모니터링
+- 로그 파일: `app.log`
+- Kafka 이벤트 모니터링
+- 에러 추적
 
-### 시스템 모니터링
-- 서버 상태
-- 메모리 사용량
-- CPU 사용량
-- 디스크 공간
+## 문제 해결
 
-### 애플리케이션 모니터링
-- 요청 응답 시간
-- 에러 발생률
-- 동시 접속자 수
-- API 사용량
+### 알림이 수신되지 않는 경우
+1. Kafka 서버 실행 확인
+2. WebSocket 연결 상태 확인
+3. 브라우저 콘솔 로그 확인
 
-### 보안 모니터링
-- 비정상 접근 시도
-- 인증 실패 로그
-- 리소스 사용량 급증 
+### 데이터베이스 연결 오류
+1. MySQL 서버 실행 확인
+2. 데이터베이스 접속 정보 확인
+3. 테이블 존재 여부 확인 

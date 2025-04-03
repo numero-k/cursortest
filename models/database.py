@@ -1,21 +1,29 @@
-import mysql.connector
-from dotenv import load_dotenv
+import sqlite3
+from flask import g
 import os
+from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST'),
-    'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'database': os.getenv('DB_NAME')
-}
+def get_db():
+    if 'db' not in g:
+        g.db = sqlite3.connect(
+            os.getenv('DATABASE_PATH', 'instance/bulletin.db'),
+            detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        g.db.row_factory = sqlite3.Row
+    return g.db
 
-def get_db_connection():
-    try:
-        conn = mysql.connector.connect(**DB_CONFIG)
-        return conn
-    except Exception as e:
-        print(f"데이터베이스 연결 오류: {e}")
-        raise 
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+def init_db():
+    db = get_db()
+    with open('schema.sql') as f:
+        db.executescript(f.read())
+    db.commit()
+
+def init_app(app):
+    app.teardown_appcontext(close_db) 
