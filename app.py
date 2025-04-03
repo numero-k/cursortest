@@ -117,13 +117,12 @@ def login():
                 session['user_id'] = user['user_id']
                 session['user_name'] = user['name']
                 session['user_db_id'] = user['id']
-                flash('로그인 성공!', 'success')
                 return redirect(url_for('main'))
             else:
-                flash('아이디 또는 비밀번호가 잘못되었습니다.', 'error')
+                return redirect(url_for('login'))
                 
         except mysql.connector.Error as err:
-            flash(f'로그인 중 오류가 발생했습니다: {err}', 'error')
+            return redirect(url_for('login'))
             
         finally:
             cursor.close()
@@ -159,7 +158,6 @@ def new_post():
         content = request.form['content']
         
         if not title or not content:
-            flash('제목과 내용을 모두 입력해주세요.', 'error')
             return redirect(url_for('new_post'))
             
         conn = get_db_connection()
@@ -172,12 +170,11 @@ def new_post():
             ''', (title, content, session['user_db_id']))
             
             conn.commit()
-            flash('게시글이 작성되었습니다.', 'success')
             return redirect(url_for('main'))
             
         except mysql.connector.Error as err:
             conn.rollback()
-            flash(f'게시글 작성 중 오류가 발생했습니다: {err}', 'error')
+            return redirect(url_for('new_post'))
             
         finally:
             cursor.close()
@@ -233,7 +230,6 @@ def add_comment(post_id):
     content = request.form['content']
     
     if not content:
-        flash('댓글 내용을 입력해주세요.', 'error')
         return redirect(url_for('view_post', post_id=post_id))
         
     conn = get_db_connection()
@@ -246,11 +242,9 @@ def add_comment(post_id):
         ''', (post_id, session['user_db_id'], content))
         
         conn.commit()
-        flash('댓글이 작성되었습니다.', 'success')
         
     except mysql.connector.Error as err:
         conn.rollback()
-        flash(f'댓글 작성 중 오류가 발생했습니다: {err}', 'error')
         
     finally:
         cursor.close()
@@ -261,7 +255,6 @@ def add_comment(post_id):
 @app.route('/logout')
 def logout():
     session.clear()
-    flash('로그아웃되었습니다.', 'success')
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -275,19 +268,15 @@ def register():
 
         # 입력값 검증
         if not name or len(name) < 2:
-            flash('이름은 2자 이상이어야 합니다.', 'error')
             return redirect(url_for('register'))
 
         if not is_valid_userid(user_id):
-            flash('아이디는 영문과 숫자 조합으로 4~20자여야 합니다.', 'error')
             return redirect(url_for('register'))
 
         if not is_valid_password(password):
-            flash('비밀번호는 8~20자의 영문, 숫자, 특수문자를 포함해야 합니다.', 'error')
             return redirect(url_for('register'))
 
         if password != password_confirm:
-            flash('비밀번호가 일치하지 않습니다.', 'error')
             return redirect(url_for('register'))
 
         conn = get_db_connection()
@@ -297,7 +286,6 @@ def register():
             # 아이디 중복 검사
             cursor.execute('SELECT * FROM users WHERE user_id = %s', (user_id,))
             if cursor.fetchone():
-                flash('이미 존재하는 아이디입니다.', 'error')
                 return redirect(url_for('register'))
 
             # 비밀번호 해시화 및 사용자 추가
@@ -308,12 +296,10 @@ def register():
             ''', (name, user_id, hashed_password, birthdate))
             
             conn.commit()
-            flash('회원가입이 완료되었습니다! 로그인해주세요.', 'success')
             return redirect(url_for('login'))
             
         except mysql.connector.Error as err:
             conn.rollback()
-            flash(f'회원가입 중 오류가 발생했습니다: {err}', 'error')
             return redirect(url_for('register'))
             
         finally:
@@ -321,6 +307,82 @@ def register():
             conn.close()
 
     return render_template('register.html')
+
+# 댓글 수정
+@app.route('/comment/<int:comment_id>/edit', methods=['POST'])
+@login_required
+def edit_comment(comment_id):
+    content = request.form.get('content')
+    
+    if not content:
+        return redirect(url_for('main'))
+        
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # 댓글 작성자 확인
+        cursor.execute('''
+            SELECT post_id, author_id FROM comments 
+            WHERE id = %s
+        ''', (comment_id,))
+        comment = cursor.fetchone()
+        
+        if not comment or comment['author_id'] != session['user_db_id']:
+            return redirect(url_for('main'))
+        
+        # 댓글 수정
+        cursor.execute('''
+            UPDATE comments 
+            SET content = %s 
+            WHERE id = %s AND author_id = %s
+        ''', (content, comment_id, session['user_db_id']))
+        
+        conn.commit()
+        return redirect(url_for('view_post', post_id=comment['post_id']))
+        
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return redirect(url_for('main'))
+        
+    finally:
+        cursor.close()
+        conn.close()
+
+# 댓글 삭제
+@app.route('/comment/<int:comment_id>/delete', methods=['POST'])
+@login_required
+def delete_comment(comment_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # 댓글 작성자 확인
+        cursor.execute('''
+            SELECT post_id, author_id FROM comments 
+            WHERE id = %s
+        ''', (comment_id,))
+        comment = cursor.fetchone()
+        
+        if not comment or comment['author_id'] != session['user_db_id']:
+            return redirect(url_for('main'))
+        
+        # 댓글 삭제
+        cursor.execute('''
+            DELETE FROM comments 
+            WHERE id = %s AND author_id = %s
+        ''', (comment_id, session['user_db_id']))
+        
+        conn.commit()
+        return redirect(url_for('view_post', post_id=comment['post_id']))
+        
+    except mysql.connector.Error as err:
+        conn.rollback()
+        return redirect(url_for('main'))
+        
+    finally:
+        cursor.close()
+        conn.close()
 
 if __name__ == '__main__':
     init_db()

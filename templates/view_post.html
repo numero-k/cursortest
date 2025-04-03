@@ -97,6 +97,37 @@
             background-color: #f8d7da;
             color: #721c24;
         }
+        .comment-actions {
+            margin-top: 5px;
+        }
+        .comment-actions button {
+            padding: 3px 8px;
+            font-size: 12px;
+            margin-right: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+            background-color: #f0f0f0;
+        }
+        .edit-btn {
+            color: #0056b3;
+        }
+        .delete-btn {
+            color: #dc3545;
+        }
+        .comment-edit-form {
+            margin-top: 10px;
+            display: none;
+        }
+        .comment-edit-form textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 5px;
+        }
+        .comment-edit-form button {
+            padding: 5px 10px;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -132,7 +163,7 @@
 
             {% if comments %}
                 {% for comment in comments %}
-                    <div class="comment">
+                    <div class="comment" id="comment-{{ comment.id }}">
                         <div class="comment-meta">
                             {{ comment.author_name }} | 
                             {{ comment.formatted_date }}
@@ -140,6 +171,22 @@
                         <div class="comment-content">
                             {{ comment.content }}
                         </div>
+                        {% if session['user_db_id'] == comment.author_id %}
+                            <div class="comment-actions">
+                                <button class="edit-btn" onclick="toggleEditForm({{ comment.id }})">수정</button>
+                                <form style="display: inline;" method="POST" action="{{ url_for('delete_comment', comment_id=comment.id) }}" 
+                                      onsubmit="return confirm('정말로 이 댓글을 삭제하시겠습니까?');">
+                                    <button type="submit" class="delete-btn">삭제</button>
+                                </form>
+                            </div>
+                            <div class="comment-edit-form" id="edit-form-{{ comment.id }}">
+                                <form method="POST" action="{{ url_for('edit_comment', comment_id=comment.id) }}">
+                                    <textarea name="content" required>{{ comment.content }}</textarea>
+                                    <button type="submit" class="btn btn-primary">저장</button>
+                                    <button type="button" class="btn btn-secondary" onclick="toggleEditForm({{ comment.id }})">취소</button>
+                                </form>
+                            </div>
+                        {% endif %}
                     </div>
                 {% endfor %}
             {% else %}
@@ -147,5 +194,20 @@
             {% endif %}
         </div>
     </div>
+
+    <script>
+        function toggleEditForm(commentId) {
+            const editForm = document.getElementById(`edit-form-${commentId}`);
+            const commentContent = editForm.previousElementSibling.previousElementSibling;
+            
+            if (editForm.style.display === 'none' || !editForm.style.display) {
+                editForm.style.display = 'block';
+                commentContent.style.display = 'none';
+            } else {
+                editForm.style.display = 'none';
+                commentContent.style.display = 'block';
+            }
+        }
+    </script>
 </body>
 </html> 
