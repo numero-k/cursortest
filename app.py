@@ -7,12 +7,17 @@ from functools import wraps
 from markupsafe import Markup
 from dotenv import load_dotenv
 import os
+from kafka import KafkaProducer, KafkaConsumer
+from flask_socketio import SocketIO, emit
+import json
+import threading
 
 # .env 파일 로드
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
+socketio = SocketIO(app)
 
 # 데이터베이스 연결 설정
 DB_CONFIG = {
@@ -22,6 +27,22 @@ DB_CONFIG = {
     'password': os.getenv('DB_PASSWORD'),
     'database': os.getenv('DB_NAME')
 }
+
+# Kafka 설정
+KAFKA_BOOTSTRAP_SERVERS = 'your_kafka_server:9092'
+NOTIFICATION_TOPIC = 'notifications'
+
+# 활동 로깅을 위한 Kafka 토픽
+ACTIVITY_LOG_TOPIC = 'user_activities'
+
+# 이메일 알림을 위한 Kafka 토픽
+EMAIL_NOTIFICATION_TOPIC = 'email_notifications'
+
+# Kafka Producer 설정
+producer = KafkaProducer(
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
 # 로그인 필요 데코레이터
 def login_required(f):
@@ -233,13 +254,47 @@ def add_comment(post_id):
         return redirect(url_for('view_post', post_id=post_id))
         
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
     
     try:
+        # 댓글 저장
         cursor.execute('''
             INSERT INTO comments (post_id, author_id, content)
             VALUES (%s, %s, %s)
         ''', (post_id, session['user_db_id'], content))
+        
+        # 게시글 작성자 정보 조회
+        cursor.execute('''
+            SELECT u.user_id, p.title 
+            FROM posts p 
+            JOIN users u ON p.author_id = u.id 
+            WHERE p.id = %s
+        ''', (post_id,))
+        post_info = cursor.fetchone()
+        
+        # Kafka로 알림 메시지 전송
+        notification = {
+            'type': 'new_comment',
+            'post_id': post_id,
+            'post_title': post_info['title'],
+            'commenter': session['user_name'],
+            'receiver': post_info['user_id'],
+            'timestamp': datetime.now().isoformat()
+        }
+        producer.send(NOTIFICATION_TOPIC, notification)
+        
+        # 이메일 알림을 위한 Kafka 토픽
+        EMAIL_NOTIFICATION_TOPIC = 'email_notifications'
+
+        def send_email_notification(post_id, comment_id):
+            notification = {
+                'post_id': post_id,
+                'comment_id': comment_id,
+                'timestamp': datetime.now().isoformat()
+            }
+            producer.send(EMAIL_NOTIFICATION_TOPIC, notification)
+
+        send_email_notification(post_id, cursor.lastrowid)
         
         conn.commit()
         
@@ -383,6 +438,46 @@ def delete_comment(comment_id):
     finally:
         cursor.close()
         conn.close()
+
+# Kafka Consumer 실행 (백그라운드 스레드)
+def kafka_consumer_thread():
+    consumer = KafkaConsumer(
+        NOTIFICATION_TOPIC,
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_deserializer=lambda x: json.loads(x.decode('utf-8'))
+    )
+    
+    for message in consumer:
+        notification = message.value
+        # WebSocket을 통해 클라이언트에게 알림 전송
+        socketio.emit('notification', notification, room=notification['receiver'])
+
+# 백그라운드에서 Kafka Consumer 실행
+threading.Thread(target=kafka_consumer_thread, daemon=True).start()
+
+# 게시글 작성 시 로깅
+@app.route('/post/new', methods=['POST'])
+@login_required
+def create_post():
+    # ... 기존 코드 ...
+    
+    log_activity(
+        session['user_id'],
+        'create_post',
+        {'post_id': post_id, 'title': title}
+    )
+    
+    # ... 나머지 코드 ...
+
+# 활동 로깅을 위한 함수
+def log_activity(user_id, action_type, details):
+    activity = {
+        'user_id': user_id,
+        'action_type': action_type,
+        'details': details,
+        'timestamp': datetime.now().isoformat()
+    }
+    producer.send(ACTIVITY_LOG_TOPIC, activity)
 
 if __name__ == '__main__':
     init_db()

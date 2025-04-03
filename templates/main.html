@@ -116,5 +116,40 @@
             <p>작성된 게시글이 없습니다.</p>
         {% endif %}
     </div>
+
+    <div id="notification-container" style="position: fixed; top: 20px; right: 20px;"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        socket.on('connect', () => {
+            console.log('WebSocket 연결됨');
+        });
+        
+        socket.on('notification', (data) => {
+            if (data.receiver === '{{ session.user_id }}') {
+                showNotification(data);
+            }
+        });
+        
+        function showNotification(data) {
+            const notification = document.createElement('div');
+            notification.className = 'alert alert-info';
+            notification.style.marginBottom = '10px';
+            
+            if (data.type === 'new_comment') {
+                notification.textContent = `${data.commenter}님이 "${data.post_title}" 게시글에 새 댓글을 작성했습니다.`;
+            }
+            
+            const container = document.getElementById('notification-container');
+            container.appendChild(notification);
+            
+            // 5초 후 알림 제거
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+        }
+    </script>
 </body>
 </html> 
