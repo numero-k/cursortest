@@ -123,4 +123,137 @@ python kafka_test.py
   - 인라인 수정 폼 제공
 - 댓글 삭제 기능 추가
   - 작성자 본인만 삭제 가능
-  - 삭제 전 확인 절차 추가 
+  - 삭제 전 확인 절차 추가
+
+## API 명세서
+
+### 인증 API
+
+#### 로그인
+- **URL:** `/login`
+- **Method:** `POST`
+- **Request Body:**
+  ```json
+  {
+    "user_id": "string",
+    "password": "string"
+  }
+  ```
+- **Response:**
+  - 성공: 메인 페이지로 리다이렉트
+  - 실패: 로그인 페이지로 리다이렉트
+
+#### 회원가입
+- **URL:** `/register`
+- **Method:** `POST`
+- **Request Body:**
+  ```json
+  {
+    "name": "string",
+    "user_id": "string",
+    "password": "string",
+    "password_confirm": "string",
+    "birthdate": "YYYY-MM-DD"
+  }
+  ```
+- **Response:**
+  - 성공: 로그인 페이지로 리다이렉트
+  - 실패: 회원가입 페이지로 리다이렉트
+
+#### 로그아웃
+- **URL:** `/logout`
+- **Method:** `GET`
+- **Response:** 로그인 페이지로 리다이렉트
+
+### 게시글 API
+
+#### 게시글 목록 조회
+- **URL:** `/posts`
+- **Method:** `GET`
+- **Query Parameters:**
+  - `page` (optional): 페이지 번호
+- **Response:** 게시글 목록 페이지
+
+#### 게시글 작성
+- **URL:** `/post/new`
+- **Method:** `POST`
+- **Request Body:**
+  ```json
+  {
+    "title": "string",
+    "content": "string"
+  }
+  ```
+- **Response:**
+  - 성공: 게시글 목록으로 리다이렉트
+  - 실패: 게시글 작성 페이지로 리다이렉트
+
+#### 게시글 조회
+- **URL:** `/post/<post_id>`
+- **Method:** `GET`
+- **Response:** 게시글 상세 페이지
+
+### 댓글 API
+
+#### 댓글 작성
+- **URL:** `/post/<post_id>/comment`
+- **Method:** `POST`
+- **Request Body:**
+  ```json
+  {
+    "content": "string"
+  }
+  ```
+- **Response:** 게시글 상세 페이지로 리다이렉트
+
+#### 댓글 수정
+- **URL:** `/comment/<comment_id>/edit`
+- **Method:** `POST`
+- **Request Body:**
+  ```json
+  {
+    "content": "string"
+  }
+  ```
+- **Response:** 게시글 상세 페이지로 리다이렉트
+
+#### 댓글 삭제
+- **URL:** `/comment/<comment_id>/delete`
+- **Method:** `POST`
+- **Response:** 게시글 상세 페이지로 리다이렉트
+
+### 실시간 알림 API (WebSocket)
+
+#### 알림 구독
+- **Event:** `connect`
+- **Description:** 클라이언트가 WebSocket 연결을 시작할 때 호출
+
+#### 알림 수신
+- **Event:** `notification`
+- **Data Format:**
+  ```json
+  {
+    "type": "string",
+    "post_id": "number",
+    "post_title": "string",
+    "commenter": "string",
+    "receiver": "string",
+    "timestamp": "string"
+  }
+  ```
+
+## 응답 코드
+
+- `200`: 성공
+- `301`, `302`: 리다이렉션
+- `400`: 잘못된 요청
+- `401`: 인증 실패
+- `403`: 권한 없음
+- `404`: 리소스 없음
+- `500`: 서버 오류
+
+## 인증
+
+- 대부분의 API는 로그인이 필요합니다.
+- 로그인하지 않은 상태에서 접근 시 로그인 페이지로 리다이렉트됩니다.
+- 세션을 통해 사용자 인증을 관리합니다. 
